@@ -26,6 +26,10 @@ $GLOBALS['wgExtensionCredits']['other'][] = array(
 	'descriptionmsg' => 'ext-accessdenied-desc'
 );
 
+$GLOBALS['egAccessDeniedViewerGroup'] = false;
+$GLOBALS['egAccessDeniedDenialPage'] = 'Access_Denied';
+$GLOBALS['egAccessDeniedDenialNS'] = NS_PROJECT;
+
 $GLOBALS['wgHooks']['UserLoadAfterLoadFromSession'][] = function( User $user ) {
 
 	global $wgRequest, $egAccessDeniedViewerGroup, $egAccessDeniedDenialPage, $egAccessDeniedDenialNS;
@@ -33,25 +37,23 @@ $GLOBALS['wgHooks']['UserLoadAfterLoadFromSession'][] = function( User $user ) {
 	// For a few special pages, don't do anything.
 	$title = $wgRequest->getVal( 'title' );
 
+	$accessDeniedTitle = Title::makeTitle( $egAccessDeniedDenialNS, $egAccessDeniedDenialPage );
+	$accessDeniedTitleText = $accessDeniedTitle->getPrefixedDBkey();
+	$accessDeniedTitleTalkText = $accessDeniedTitle->getTalkPage()->getPrefixedDBkey();
+
+	if ( $title == $accessDeniedTitle || $title == $accessDeniedTitleTalkText ) {
+		return true;
+	}
+
 	// if set, only members of group $egAccessDeniedViewerGroup will be allowed to view wiki
 	if ( $egAccessDeniedViewerGroup ) {
 
-		if ( ! $egAccessDeniedDenialPage ) {
-			$egAccessDeniedDenialPage = "Access_Denied";
-		}
-
-		if ( ! isset( $egAccessDeniedDenialNS ) ) {
-			$egAccessDeniedDenialNS = NS_PROJECT;
-		}
-
-		$accessDeniedTitle = Title::makeName( $egAccessDeniedDenialNS, $egAccessDeniedDenialPage );
-		$accessDeniedTitleTalk = $accessDeniedTitle->getTalkPage();
 		$userInGroup = in_array( $egAccessDeniedViewerGroup, $user->getEffectiveGroups(true) );
 
 		// Only users in group $egAccessDeniedViewerGroup may enter the entirety of the wiki.
 		// Non-members of the group are able to view the "access denied" page (and its talk page),
 		// and will be redirected to "access denied" page if they attempt to view other pages.
-		if ( ! $userInGroup && ! ($title == $accessDeniedTitle || $title == $accessDeniedTitleTalk ) ) {
+		if ( ! $userInGroup ) {
 
 			// redirect user to "access denied" page
 			$wgRequest->setVal("title", Title::makeName( $egAccessDeniedDenialNS, $egAccessDeniedDenialPage) );
