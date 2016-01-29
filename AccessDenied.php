@@ -30,17 +30,17 @@ $GLOBALS['egAccessDeniedViewerGroup'] = false;
 $GLOBALS['egAccessDeniedDenialPage'] = 'Access_Denied';
 $GLOBALS['egAccessDeniedDenialNS'] = NS_PROJECT;
 
-$GLOBALS['wgHooks']['UserLoadAfterLoadFromSession'][] = function( User $user ) {
+// Function called after MediaWiki is initialized
+$wgExtensionFunctions[] = function() {
+	global $wgRequest, $wgUser, $egAccessDeniedViewerGroup, $egAccessDeniedDenialPage, $egAccessDeniedDenialNS;
 
-	global $wgRequest, $egAccessDeniedViewerGroup, $egAccessDeniedDenialPage, $egAccessDeniedDenialNS;
-
-	// For a few special pages, don't do anything.
 	$title = $wgRequest->getVal( 'title' );
 
 	$accessDeniedTitle = Title::makeTitle( $egAccessDeniedDenialNS, $egAccessDeniedDenialPage );
 	$accessDeniedTitleText = $accessDeniedTitle->getPrefixedDBkey();
 	$accessDeniedTitleTalkText = $accessDeniedTitle->getTalkPage()->getPrefixedDBkey();
 
+	// if title is the access-denied page anyone is allowed through
 	if ( $title == $accessDeniedTitle || $title == $accessDeniedTitleTalkText ) {
 		return true;
 	}
@@ -48,15 +48,14 @@ $GLOBALS['wgHooks']['UserLoadAfterLoadFromSession'][] = function( User $user ) {
 	// if set, only members of group $egAccessDeniedViewerGroup will be allowed to view wiki
 	if ( $egAccessDeniedViewerGroup ) {
 
-		$userInGroup = in_array( $egAccessDeniedViewerGroup, $user->getEffectiveGroups(true) );
+		$userInGroup = in_array( $egAccessDeniedViewerGroup, $wgUser->getEffectiveGroups(true) );
 
 		// Only users in group $egAccessDeniedViewerGroup may enter the entirety of the wiki.
 		// Non-members of the group are able to view the "access denied" page (and its talk page),
 		// and will be redirected to "access denied" page if they attempt to view other pages.
 		if ( ! $userInGroup ) {
-
 			// redirect user to "access denied" page
-			$wgRequest->setVal("title", Title::makeName( $egAccessDeniedDenialNS, $egAccessDeniedDenialPage) );
+			$wgRequest->setVal( "title", Title::makeName( $egAccessDeniedDenialNS, $egAccessDeniedDenialPage ) );
 		}
 
 	}
